@@ -92,19 +92,32 @@ function createSketch(img){
 
     // Convert to grayscale
     for(let i=0; i<data.length; i+=4){
-        let avg = (data[i] + data[i+1] + data[i+2]) / 3;
+        let avg = 0.299*data[i] + 0.587*data[i+1] + 0.114*data[i+2]; 
         data[i] = data[i+1] = data[i+2] = avg;
     }
 
-    // Simple invert to mimic sketch
-    for(let i=0; i<data.length; i+=4){
-        data[i] = 255 - data[i];
-        data[i+1] = 255 - data[i+1];
-        data[i+2] = 255 - data[i+2];
+    // Simple edge detection (Sobel)
+    let width = canvas.width;
+    let height = canvas.height;
+    let copy = new Uint8ClampedArray(data); // copy of original grayscale
+
+    for(let y=1; y<height-1; y++){
+        for(let x=1; x<width-1; x++){
+            let i = (y*width + x) * 4;
+            // Sobel kernels
+            let gx = -copy[((y-1)*width + (x-1))*4] -2*copy[(y*width + (x-1))*4] - copy[((y+1)*width + (x-1))*4]
+                     + copy[((y-1)*width + (x+1))*4] + 2*copy[(y*width + (x+1))*4] + copy[((y+1)*width + (x+1))*4];
+            let gy = -copy[((y-1)*width + (x-1))*4] -2*copy[((y-1)*width + x)*4] - copy[((y-1)*width + (x+1))*4]
+                     + copy[((y+1)*width + (x-1))*4] + 2*copy[((y+1)*width + x)*4] + copy[((y+1)*width + (x+1))*4];
+            let val = Math.sqrt(gx*gx + gy*gy);
+            val = 255 - Math.min(255, val*2); // invert for pencil sketch
+            data[i] = data[i+1] = data[i+2] = val;
+        }
     }
 
     ctx.putImageData(imageData, 0, 0);
 }
+
 
 // Download sketch
 downloadBtn.addEventListener('click', function(){
