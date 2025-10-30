@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Photo → Realistic Pencil Sketch + Tutorial (Dark)</title>
+  <meta name="description" content="Upload a photo, convert it to a realistic pencil sketch and get a step-by-step drawing tutorial. Dark theme single-file web app."/>
+  <style>
+    :root{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial,400;background:#0b0f14;color:#e6eef8}
+    body{margin:0;display:flex;flex-direction:column;align-items:center;gap:18px;padding:20px;background:linear-gradient(180deg,#07101a 0%, #0b1520 100%);min-height:100vh}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));border-radius:12px;box-shadow:0 10px 30px rgba(2,6,23,0.6);padding:18px;max-width:1100px;width:100%;border:1px solid rgba(255,255,255,0.03)}
+    header{display:flex;align-items:center;gap:12px}
+    h1{margin:0;font-size:18px;color:#dff3ff}
+    .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    input[type=file]{padding:6px;background:transparent;color:inherit;border-radius:8px;border:1px dashed rgba(255,255,255,0.06);cursor:pointer}
+    button{padding:8px 12px;border-radius:8px;border:0;background:#2b88ff;color:white;cursor:pointer;box-shadow:0 6px 18px rgba(43,136,255,0.12)}
+    button.ghost{background:transparent;color:#9ec8ff;border:1px solid rgba(158,200,255,0.12);box-shadow:none}
+    .grid{display:grid;grid-template-columns:1fr 420px;gap:16px;margin-top:12px}
+    .preview-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    canvas{max-width:100%;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:#0b1220}
+    .sidebar{padding:8px}
+    label.small{font-size:13px;color:#bcd8ff}
+    .tutorial-steps{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:12px}
+    .step{background:linear-gradient(180deg,rgba(255,255,255,0.01),rgba(255,255,255,0.005));padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.02)}
+    .step h4{margin:6px 0;font-size:14px;color:#dff3ff}
+    .muted{color:#9fbfe6;font-size:13px}
+    .download-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    footer{font-size:13px;color:#8fb7db;text-align:center;margin-top:12px}
+    a.link{color:#aee1ff}
+    @media (max-width:980px){.grid{grid-template-columns:1fr} .preview-grid{grid-template-columns:1fr} .tutorial-steps{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="card" role="main">
+    <header>
+      <h1>Photo → Realistic Pencil Sketch + Step-by-step Tutorial (Dark)</h1>
+    </header>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
+      <div>
+        <label class="small">Upload a photo (jpg/png). Use a clear, well-lit image for best results.</label><br>
+        <input id="fileInput" type="file" accept="image/*">
+      </div>
+      <div class="controls">
+        <label class="small">Sketch intensity</label>
+        <input id="strength" type="range" min="0" max="1" step="0.01" value="0.65" title="Sketch strength">
+        <button id="processBtn" title="Create sketch">Make Sketch</button>
+        <button id="downloadSketch" class="ghost" title="Download the final sketch">Download Sketch</button>
+        <button id="downloadTutorial" class="ghost" title="Download tutorial images as ZIP">Download Tutorial (ZIP)</button>
+      </div>
+    </div>
+
+    <hr style="margin:12px 0;border:none;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.03),transparent)"/>
+
+    <div class="grid">
+      <div>
+        <h3 style="margin:6px 0;color:#dff3ff">Preview</h3>
+        <div class="preview-grid">
+          <div>
+            <canvas id="origCanvas" width="640" height="480"></canvas>
+            <div style="text-align:center;font-size:13px;color:#9fbfe6;margin-top:6px">Original</div>
+          </div>
+          <div>
+            <canvas id="sketchCanvas" width="640" height="480"></canvas>
+            <div style="text-align:center;font-size:13px;color:#9fbfe6;margin-top:6px">Pencil Sketch</div>
+          </div>
+        </div>
+
+        <div id="status" class="muted" style="margin-top:10px">No image loaded.</div>
+
+        <div id="tutorialArea" style="margin-top:12px;display:none;">
+          <h3 style="margin:6px 0;color:#dff3ff">Step-by-step Tutorial</h3>
+          <div class="tutorial-steps" id="stepsGrid">
+            <!-- Steps injected here -->
+          </div>
+        </div>
+      </div>
+
+      <aside class="sidebar">
+        <h3 style="margin:6px 0;color:#dff3ff">How it works</h3>
+        <p class="muted">This page uses a classic “pencil sketch” technique: grayscale → invert → blur → dodge blend → contrast. Then it generates simplified step images and short instructions to help you draw the sketch by hand.</p>
+
+        <h4 style="margin-top:12px;color:#dff3ff">Tips for best results</h4>
+        <ul class="muted">
+          <li>Clear, well-lit photos with contrast work best.</li>
+          <li>Portraits are ideal when faces are evenly lit.</li>
+          <li>Higher-resolution images give more sketch detail.</li>
+        </ul>
+
+        <div class="download-row">
+          <button id="downloadAllImages" class="ghost">Download All Images</button>
+        </div>
+
+        <hr style="margin-top:12px;border:none;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.02),transparent)"/>
+
+        <div>
+          <h4 style="margin:6px 0;color:#dff3ff">Open & Use</h4>
+          <div class="muted">Save this file, open in any modern browser (Chrome/Edge/Firefox/Safari). Internet is required only to fetch external helper libraries when downloading ZIP (if you choose).</div>
+        </div>
+      </aside>
+    </div>
+
+    <footer>Made for you — open the file, upload a picture, and follow the drawing steps.</footer>
+  </div>
+
+<script>
+// Helper to create and download a blob as file
+function downloadBlob(blob, filename){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),5000); }
+
+// DOM
+const fileInput = document.getElementById('fileInput');
+const origCanvas = document.getElementById('origCanvas'); const origCtx = origCanvas.getContext('2d');
+const sketchCanvas = document.getElementById('sketchCanvas'); const sketchCtx = sketchCanvas.getContext('2d');
+const statusEl = document.getElementById('status');
+const processBtn = document.getElementById('processBtn');
+const strengthEl = document.getElementById('strength');
+const stepsGrid = document.getElementById('stepsGrid');
+const tutorialArea = document.getElementById('tutorialArea');
+let loadedImage = null;
+
+// Load image
+fileInput.addEventListener('change', (e)=>{
+  const f = e.target.files[0]; if(!f) return;
+  const url = URL.createObjectURL(f);
+  const img = new Image();
+  img.onload = ()=>{
+    loadedImage = img;
+    // resize to width 900 max
+    const maxW = 900; let w=img.width, h=img.height;
+    if(w>maxW){ h = Math.round(h*(maxW/w)); w = maxW; }
+    origCanvas.width=w; origCanvas.height=h; sketchCanvas.width=w; sketchCanvas.height=h;
+    origCtx.clearRect(0,0,w,h); origCtx.drawImage(img,0,0,w,h);
+    sketchCtx.clearRect(0,0,w,h);
+    statusEl.textContent = 'Image loaded. Click "Make Sketch".';
+    tutorialArea.style.display='none'; stepsGrid.innerHTML='';
+  };
+  img.onerror = ()=> statusEl.textContent='Failed to load image.';
+  img.src = url;
+});
+
+// Image processing functions
+function getImageDataFromCanvas(canvas){ const ctx=canvas.getContext('2d'); return ctx.getImageData(0,0,canvas.width,canvas.height); }
+function putImageDataToCanvas(imgData, canvas){ const ctx=canvas.getContext('2d'); ctx.putImageData(imgData,0,0); }
+
+function toGrayscale(imgData){ const d=imgData.data; for(let i=0;i<d.length;i+=4){ const r=d[i],g=d[i+1],b=d[i+2]; const v=0.299*r+0.587*g+0.114*b; d[i]=d[i+1]=d[i+2]=v; } return imgData; }
+function invertData(imgData){ const d=imgData.data; for(let i=0;i<d.length;i+=4){ d[i]=255-d[i]; d[i+1]=255-d[i+1]; d[i+2]=255-d[i+2]; } return imgData; }
+function adjustContrast(imgData, contrast){ const d=imgData.data; const factor=(259*(contrast+255))/(255*(259-contrast)); for(let i=0;i<d.length;i+=4){ for(let c=0;c<3;c++){ let v=d[i+c]; v=factor*(v-128)+128; d[i+c]=Math.max(0,Math.min(255,Math.round(v))); } } return imgData; }
+
+// Simple gaussian blur using canvas filter (fast)
+function blurCanvas(srcCanvas, radius){
+  const tmp=document.createElement('canvas'); tmp.width=srcCanvas.width; tmp.height=srcCanvas.height;
+  const tctx=tmp.getContext('2d'); try{ tctx.filter = `blur(${radius}px)`; }catch(e){}
+  tctx.drawImage(srcCanvas,0,0); tctx.filter = 'none'; return tmp;
+}
+
+// color dodge blend: bottom / (1 - top)
+function colorDodge(bottomData, topData){
+  const bd=bottomData.data, td=topData.data; const out=new Uint8ClampedArray(bd.length);
+  for(let i=0;i<bd.length;i+=4){
+    for(let c=0;c<3;c++){
+      const B=bd[i+c]/255, T=td[i+c]/255;
+      let res = B / (1 - T + 1e-6); if(res>1) res=1;
+      out[i+c] = Math.round(res*255);
+    }
+    out[i+3]=255;
+  }
+  return new ImageData(out, bottomData.width, bottomData.height);
+}
+
+// Edge detection (Sobel)
+function edgeDetect(imgData){
+  const w=imgData.width, h=imgData.height; const src=imgData.data;
+  // compute grayscale array
+  const gray=new Float32Array(w*h);
+  for(let y=0;y<h;y++){ for(let x=0;x<w;x++){ const i=(y*w+x)*4; gray[y*w+x]=src[i]; } }
+  const out=new Uint8ClampedArray(w*h*4);
+  const gx=[-1,0,1,-2,0,2,-1,0,1]; const gy=[-1,-2,-1,0,0,0,1,2,1];
+  for(let y=1;y<h-1;y++){ for(let x=1;x<w-1;x++){
+    let sx=0, sy=0, k=0;
+    for(let ky=-1;ky<=1;ky++){ for(let kx=-1;kx<=1;kx++){ const val = gray[(y+ky)*w + (x+kx)]; sx += gx[k]*val; sy += gy[k]*val; k++; } }
+    let mag = Math.sqrt(sx*sx + sy*sy); if(mag>255) mag=255; const p=(y*w+x)*4; const col = 255 - mag;
+    out[p]=out[p+1]=out[p+2]=col; out[p+3]=255;
+  } }
+  return new ImageData(out,w,h);
+}
+
+// Create the sketch from the loaded image
+function makeSketch(intensity){
+  if(!loadedImage){ statusEl.textContent='No image loaded.'; return; }
+  statusEl.textContent='Processing...';
+  // draw original into temp canvas
+  const w=origCanvas.width, h=origCanvas.height;
+  // Step A: grayscale original copy
+  const tmp = document.createElement('canvas'); tmp.width=w; tmp.height=h; const tctx=tmp.getContext('2d');
+  tctx.drawImage(loadedImage,0,0,w,h);
+  let imgData = tctx.getImageData(0,0,w,h);
+  imgData = toGrayscale(imgData);
+  tctx.putImageData(imgData,0,0);
+
+  // Step B: invert grayscale
+  const invCanvas = document.createElement('canvas'); invCanvas.width=w; invCanvas.height=h; const ictx=invCanvas.getContext('2d');
+  const invData = invertData(new ImageData(new Uint8ClampedArray(imgData.data), w, h));
+  ictx.putImageData(invData,0,0);
+
+  // Step C: blur the inverted image
+  const blurRadius = Math.max(1, Math.round(20 * (1 - intensity))); // stronger intensity = finer blur
+  const blurred = blurCanvas(invCanvas, blurRadius);
+
+  // Step D: color dodge blend between grayscale (bottom) and blurred inverted (top)
+  const bottom = tctx.getImageData(0,0,w,h);
+  const topCtx = blurred.getContext('2d');
+  const topData = topCtx.getImageData(0,0,w,h);
+  const dodged = colorDodge(bottom, topData);
+
+  // Step E: adjust contrast and slight brightness
+  const contrasted = adjustContrast(dodged, 8 + intensity*20);
+
+  // Put final sketch on sketchCanvas
+  sketchCtx.clearRect(0,0,w,h);
+  sketchCtx.putImageData(contrasted,0,0);
+
+  // Generate tutorial steps
+  generateTutorial(contrasted);
+  statusEl.textContent='Sketch ready. Follow the tutorial below.';
+  tutorialArea.style.display='block';
+}
+
+// Generate tutorial steps and images
+function generateTutorial(sketchImageData){
+  stepsGrid.innerHTML='';
+  const w=sketchImageData.width, h=sketchImageData.height;
+  // Step images are variations: outline, base tones, midtones, shadows, details
+  // Outline: detect edges on the original grayscale
+  const origImg = origCtx.getImageData(0,0,w,h);
+  const grayOrig = toGrayscale(new ImageData(new Uint8ClampedArray(origImg.data), w, h));
+  const edges = edgeDetect(grayOrig);
+
+  // Base tones: heavy blur of sketch
+  const baseCanvas = document.createElement('canvas'); baseCanvas.width=w; baseCanvas.height=h; const bctx=baseCanvas.getContext('2d');
+  bctx.putImageData(sketchImageData,0,0);
+  const baseBlur = blurCanvas(baseCanvas, Math.max(6, Math.round(w/120)));
+  // Midtones: moderate blur
+  const midCanvas = document.createElement('canvas'); midCanvas.width=w; midCanvas.height=h; const mctx=midCanvas.getContext('2d');
+  mctx.drawImage(baseBlur,0,0); mctx.globalAlpha=0.85; mctx.drawImage(sketchCanvas,0,0); mctx.globalAlpha=1.0;
+  const midImg = mctx.getImageData(0,0,w,h);
+
+  // Shadows: multiply darker regions to emphasize
+  const shadowCanvas = document.createElement('canvas'); shadowCanvas.width=w; shadowCanvas.height=h; const sctx=shadowCanvas.getContext('2d');
+  sctx.putImageData(sketchImageData,0,0);
+  sctx.globalCompositeOperation='multiply'; sctx.fillStyle='rgba(0,0,0,0.25)'; sctx.fillRect(0,0,w,h); sctx.globalCompositeOperation='source-over';
+
+  // Details: original sketch slightly sharpened (approx by overlay)
+  const detailCanvas = document.createElement('canvas'); detailCanvas.width=w; detailCanvas.height=h; const dctx=detailCanvas.getContext('2d');
+  dctx.drawImage(sketchCanvas,0,0); dctx.globalAlpha=0.5; dctx.drawImage(origCanvas,0,0); dctx.globalAlpha=1.0;
+
+  // Prepare steps array with captions
+  const steps = [
+    {title:'Step 1 — Outline', desc:'Draw the main outlines and contours. Focus on large shapes and placement.', canvasData: edges},
+    {title:'Step 2 — Base Tones', desc:'Lay down light tones to establish general light/dark areas. Use gentle strokes.', canvasEl: baseBlur},
+    {title:'Step 3 — Midtones', desc:'Add midtones to model volume. Use cross-hatching or light shading.', canvasData: midImg},
+    {title:'Step 4 — Shadows', desc:'Deepen darkest areas to increase contrast and depth.', canvasEl: shadowCanvas},
+    {title:'Step 5 — Details & Texture', desc:'Refine edges, add hair/texture and small highlights for realism.', canvasEl: detailCanvas}
+  ];
+
+  // Render each step to grid
+  steps.forEach((s, idx)=>{
+    const wrap = document.createElement('div'); wrap.className='step';
+    const title = document.createElement('h4'); title.textContent = s.title; wrap.appendChild(title);
+    const p = document.createElement('div'); p.className='muted'; p.textContent = s.desc; wrap.appendChild(p);
+    const c = document.createElement('canvas'); c.width = w/2; c.height = Math.round(h/2); c.style.width='100%'; c.style.height='auto'; c.style.marginTop='8px'; wrap.appendChild(c);
+
+    // draw onto small canvas
+    const ctx = c.getContext('2d');
+    if(s.canvasEl){
+      ctx.drawImage(s.canvasEl, 0, 0, c.width, c.height);
+    } else if(s.canvasData){
+      // put image data then scale
+      const tmp = document.createElement('canvas'); tmp.width=w; tmp.height=h; tmp.getContext('2d').putImageData(s.canvasData,0,0);
+      ctx.drawImage(tmp,0,0, c.width, c.height);
+    }
+    stepsGrid.appendChild(wrap);
+  });
+
+  // Show download buttons enabled
+  document.getElementById('downloadSketch').disabled=false;
+  document.getElementById('downloadTutorial').disabled=false;
+}
+
+// Events
+processBtn.addEventListener('click', ()=>{
+  if(!loadedImage){ statusEl.textContent='Please upload an image first.'; return; }
+  const strength = parseFloat(strengthEl.value || 0.65);
+  makeSketch(strength);
+});
+
+// Download sketch image
+document.getElementById('downloadSketch').addEventListener('click', ()=>{
+  if(!sketchCanvas) return;
+  sketchCanvas.toBlob((b)=> downloadBlob(b, 'pencil-sketch.png'), 'image/png');
+});
+
+// Download tutorial as ZIP (uses JSZip from CDN if available)
+document.getElementById('downloadTutorial').addEventListener('click', async ()=>{
+  // Collect images from steps
+  const canvases = Array.from(stepsGrid.querySelectorAll('canvas'));
+  if(canvases.length===0){ statusEl.textContent='No tutorial to download.'; return; }
+  // Try to use JSZip if window.JSZip present; otherwise create a simple multiple-download fallback
+  if(window.JSZip){
+    const zip = new JSZip();
+    canvases.forEach((c, i)=>{
+      const dataURL = c.toDataURL('image/png');
+      const base64 = dataURL.split(',')[1];
+      zip.file(`step-${i+1}.png`, base64, {base64:true});
+    });
+    const content = await zip.generateAsync({type:'blob'});
+    downloadBlob(content, 'tutorial-steps.zip');
+  }else{
+    // fallback: download each file separately
+    canvases.forEach((c,i)=>{
+      c.toBlob((b)=> downloadBlob(b, `step-${i+1}.png`));
+    });
+    statusEl.textContent='Downloaded steps individually (fallback). For single ZIP, reload the page with internet to fetch JSZip.';
+  }
+});
+
+// Download all images (original + sketch + steps)
+document.getElementById('downloadAllImages').addEventListener('click', async ()=>{
+  const files = [];
+  // original
+  origCanvas.toBlob((b)=>{ files.push({name:'original.png', blob:b}); proceedIfReady(); });
+  // sketch
+  sketchCanvas.toBlob((b)=>{ files.push({name:'sketch.png', blob:b}); proceedIfReady(); });
+  // steps
+  const canvases = Array.from(stepsGrid.querySelectorAll('canvas'));
+  canvases.forEach((c,i)=> c.toBlob((b)=>{ files.push({name:`step-${i+1}.png`, blob:b}); proceedIfReady(); }));
+  let expected = 2 + canvases.length; let got=0;
+  function proceedIfReady(){ got++; if(got>=expected){ // try zip
+      if(window.JSZip){ const zip=new JSZip(); files.forEach(f=> zip.file(f.name, f.blob)); const contentPromise = zip.generateAsync({type:'blob'}); contentPromise.then((content)=> downloadBlob(content, 'all-images.zip')); }
+      else{ // fallback multiple downloads
+        files.forEach(f=> downloadBlob(f.blob, f.name)); statusEl.textContent='Downloaded individual files (fallback).';
+      }
+  } }
+});
+
+// Try load JSZip automatically for ZIP support (only if online)
+(function loadJSZip(){ const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'; s.onload=()=>console.log('JSZip loaded'); s.onerror=()=>console.log('JSZip failed to load'); document.head.appendChild(s); })();
+
+</script>
+</body>
+</html>
