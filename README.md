@@ -136,8 +136,9 @@ imageUpload.addEventListener('change', async function(event){
     ctx.fillText("Processing sketch...", 20, 40);
 
     // Call DeepAI Pencil Sketch API
-    const formData = new FormData();
-    formData.append('image', file);
+    let formData = new FormData();
+formData.append("image", file);
+fetch("API_URL", { method: "POST", body: formData, headers: { "API-Key": "..." }})
 
     try {
         const response = await fetch("https://api.deepai.org/api/pencil-sketch", {
