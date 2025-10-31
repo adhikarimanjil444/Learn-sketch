@@ -116,7 +116,7 @@ const ctx = canvas.getContext('2d');
 const downloadBtn = document.getElementById('downloadBtn');
 
 // Replace with your free DeepAI API key
-const DEEPAI_API_KEY = 'YOUR_DEEPAI_API_KEY';
+const DEEPAI_API_KEY = 5a2a1714-9883-49d6-b2e1-364fba087eef;
 
 let sketchImg = new Image();
 
